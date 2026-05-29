@@ -61,7 +61,7 @@ python train_pcb.py
 | YOLO26n | 2.51 | 99.10 | 69.20 |
 | **YOLO26n + RAFM** | **2.60** | **99.29** | **76.50** |
 
-## Results on DsPCBSD
+## Results on DeepPCB
 
 | Model | Params (M) | mAP50 (%) | mAP50-95 (%) |
 |---|---|---|---|
