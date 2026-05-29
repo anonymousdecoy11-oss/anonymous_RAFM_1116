@@ -7,10 +7,10 @@ RAFM is a lightweight backbone plugin for YOLO-family detectors that encodes PCB
 ## Repository Structure
 
 ```
-ultralytics/nn/modules/block.py      ← RAFM class implementation
+block.py                             ← RAFM class implementation
 ultralytics/nn/tasks.py              ← RAFM registered in parse_model()
 ultralytics/cfg/models/26/
-    model.yaml                     ← baseline config
+    model.yaml                       ← baseline config
 train_pcb.py                         ← training script
 ```
 
