@@ -1,0 +1,49 @@
+# yolo26s-visdrone.yaml
+# Scale is declared EXPLICITLY inside the file — never relies on filename parsing
+
+nc: 10          # VisDrone (change to your actual class count)
+scale: s        # <- EXPLICIT: prevents "Assuming scale=n" fallback
+end2end: True
+reg_max: 1
+
+scales:
+  s: [0.50, 0.50, 1024]   # only s kept — no accidental n/m/l/x fallback
+
+# s-scale channel sizes after width_multiple=0.50:
+#   16->8  32->16  64->32  128->64  256->128  (used in comments below)
+
+backbone:
+  - [-1, 1, Conv,  [16, 3, 2]]                # L0    8ch  320×320
+  - [-1, 1, Conv,  [32, 3, 2]]                # L1   16ch  160×160
+  - [-1, 1, C3k2,  [64, 1, False, 0.25]]      # L2   32ch  160×160
+  - [-1, 1, Conv,  [64, 3, 2]]                # L3   32ch   80×80
+  - [-1, 1, C3k2,  [128, 1, False, 0.25]]     # L4   64ch   80×80  <- skip -> L15
+  - [-1, 1, Conv,  [128, 3, 2]]               # L5   64ch   40×40
+  - [-1, 1, C3k2,  [128, 1, True]]            # L6   64ch   40×40  <- skip -> L12
+  - [-1, 1, Conv,  [256, 3, 2]]               # L7  128ch   20×20
+  - [-1, 1, C3k2,  [256, 1, True]]            # L8  128ch   20×20
+  - [-1, 1, SPPF,  [256, 5, 3, True]]         # L9  128ch   20×20
+  - [-1, 1, C3k2, [256, 2, True]]   # L10  (C2PSA removed — crashes at sub-256ch)                  # L10 128ch   20×20  <- skip -> L21
+  #   C2PSA at s: c2=128, self.c=64, num_heads=1, key_dim=32  NO CRASH
+
+head:
+  # FPN top-down
+  - [-1,      1, nn.Upsample, [None, 2, 'nearest']]  # L11  128ch  40×40
+  - [[-1, 6], 1, Concat,      [1]]                   # L12  192ch  (128+64)
+  - [-1,      1, MSFA,        [128]]                  # L13   64ch  40×40
+
+  - [-1,      1, nn.Upsample, [None, 2, 'nearest']]  # L14   64ch  80×80
+  - [[-1, 4], 1, Concat,      [1]]                   # L15  128ch  (64+64)
+  - [-1,      1, MSFA,        [64]]                   # L16   32ch  80×80  small-obj
+
+  # PAN bottom-up
+  - [-1,       1, Conv,   [64, 3, 2]]                # L17   32ch  40×40
+  - [[-1, 13], 1, Concat, [1]]                       # L18   96ch  (32+64)
+  - [-1,       1, C3k2,   [128, 1, True]]            # L19   64ch  40×40
+
+  - [-1,       1, Conv,   [128, 3, 2]]               # L20   64ch  20×20
+  - [[-1, 10], 1, Concat, [1]]                       # L21  192ch  (64+128)
+  - [-1,       1, C3k2,   [256, 1, True, 0.5, True]] # L22  128ch  20×20
+
+  # Detect  P3=32ch(80²)  P4=64ch(40²)  P5=128ch(20²)
+  - [[16, 19, 22], 1, Detect, [nc]]                  # L23
